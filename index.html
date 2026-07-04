@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Orçamento Familiar</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#09090f;color:#e2e0f0;font-family:system-ui,sans-serif;min-height:100vh}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#2a2745}
+@keyframes dot{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const SUPA_URL="https://ktwmitaifevjxhowyjpm.supabase.co";
+const SUPA_KEY="sb_publishable_CCZ88Tb5JjzrjInAIvaiaw_cvDQZZG2";
+const H={"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"};
+const db={
+  async get(t,q=""){const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${q}&order=criado_em.desc`,{headers:H});return r.json()},
+  async insert(t,d){const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:"POST",headers:{...H,Prefer:"return=representation"},body:JSON.stringify(d)});return r.json()},
+  async update(t,id,d){const r=await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:"PATCH",headers:{...H,Prefer:"return=representation"},body:JSON.stringify(d)});return r.json()},
+  async softDelete(t,id){await fetch(`${SUPA_URL}/rest/v1/${t}?id=eq.${id}`,{method:"PATCH",headers:{...H,Prefer:"return=representation"},body:JSON.stringify({apagado:true})})}
+};
+const CATS={
+  casa:{label:"Casa",emoji:"🏠",color:"#60a5fa",bg:"#1e3a5f"},
+  beleza:{label:"Beleza",emoji:"💄",color:"#f472b6",bg:"#4a1942"},
+  saude:{label:"Saúde",emoji:"💊",color:"#34d399",bg:"#064e3b"},
+  alimentacao:{label:"Alimentação",emoji:"🍱",color:"#fbbf24",bg:"#451a03"},
+  transporte:{label:"Transporte",emoji:"🚌",color:"#a78bfa",bg:"#2e1065"},
+  lazer:{label:"Lazer",emoji:"🎮",color:"#fb923c",bg:"#431407"},
+  roupas:{label:"Roupas",emoji:"👗",color:"#e879f9",bg:"#3b0764"},
+  outros:{label:"Outros",emoji:"📦",color:"#94a3b8",bg:"#1e293b"}
+};
+const KW={
+  casa:["mercado","limpeza","detergente","sabão","aluguel","luz","água","gás","faxina","conta"],
+  beleza:["shampoo","condicionador","creme","perfume","maquiagem","batom","hidratante","esmalte","salão","cabelo","skincare"],
+  saude:["remédio","farmácia","médico","consulta","exame","vitamina","academia","dentista"],
+  alimentacao:["restaurante","lanche","delivery","ifood","café","almoço","jantar","padaria","supermercado","pizza"],
+  transporte:["ônibus","uber","99","combustível","gasolina","metrô","passagem"],
+  lazer:["cinema","show","netflix","spotify","jogo","livro","viagem","festa"],
+  roupas:["roupa","calça","blusa","vestido","tênis","sapato","sandália","bolsa"]
+};
+function detectCat(t){const l=t.toLowerCase();for(const[k,ws]of Object.entries(KW))if(ws.some(w=>l.includes(w)))return k;return"outros"}
+const fmtBRL=v=>v==null?"—":`R$ ${Number(v).toFixed(2).replace(".",",")}`;
+const fmtDate=iso=>new Date(iso).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+const monthKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+
+function App(){
+  const[me,setMe]=React.useState(null);
+  const[screen,setScreen]=React.useState("login");
+  const[gastos,setGastos]=React.useState([]);
+  const[members,setMembers]=React.useState([]);
+  const[month,setMonth]=React.useState(new Date());
+  const[webhook,setWebhook]=React.useState("");
+
+  async function reload(){
+    const[g,m]=await Promise.all([db.get("gastos","apagado=eq.false"),db.get("membros")]);
+    setGastos(Array.isArray(g)?g:[]);
+    setMembers(Array.isArray(m)?m:[]);
+  }
+
+  React.useEffect(()=>{if(me){reload();const t=setInterval(reload,10000);return()=>clearInterval(t)}},[me]);
+
+  if(!me)return React.createElement(LoginScreen,{onLogin:u=>{setMe(u);setScreen("chat")}});
+
+  const mesAtual=monthKey(month);
+  const gastosMes=gastos.filter(g=>g.mes===mesAtual);
+  const totalMes=gastosMes.reduce((s,g)=>s+(g.valor||0),0);
+  const totalMeuMes=gastosMes.filter(g=>g.membro_id===me.id).reduce((s,g)=>s+(g.valor||0),0);
+  const tabs=[["chat","💬"],["painel","📊"],["agenda","📅"]];
+  if(me.is_admin)tabs.push(["admin","👑"]);
+
+  return React.createElement("div",{style:{maxWidth:440,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column",background:"#09090f"}},
+    React.createElement("div",{style:{padding:"14px 14px 0",background:"linear-gradient(180deg,#13111f 0%,transparent 100%)"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},
+        React.createElement("div",{style:{width:34,height:34,borderRadius:10,background:"linear-gradient(135deg,#7c3aed,#db2777)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"💰"),
+        React.createElement("div",{style:{flex:1}},
+          React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#f0eeff"}},"Orçamento em Grupo"),
+          React.createElement("div",{style:{fontSize:11,color:"#6b6a8a"}},"Olá, "+me.nome+(me.is_admin?" 👑":""))
+        ),
+        React.createElement("div",{style:{textAlign:"right"}},
+          React.createElement("div",{style:{fontSize:10,color:"#6b6a8a"}},"este mês"),
+          React.createElement("div",{style:{fontSize:15,fontWeight:700,color:"#a78bfa"}},fmtBRL(totalMes))
+        )
+      ),
+      React.createElement("div",{style:{display:"flex",gap:3,background:"#13111f",borderRadius:12,padding:3}},
+        tabs.map(([id,label])=>React.createElement("button",{key:id,onClick:()=>setScreen(id),style:{flex:1,padding:"8px 2px",borderRadius:9,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,background:screen===id?"linear-gradient(135deg,#3730a3,#6d28d9)":"transparent",color:screen===id?"#ddd6fe":"#4a4870"}},label))
+      )
+    ),
+    React.createElement("div",{style:{flex:1,overflowY:"auto"}},
+      screen==="chat"&&React.createElement(ChatScreen,{me,reload,webhook}),
+      screen==="painel"&&React.createElement(PainelScreen,{gastos:gastosMes,members,month,setMonth,totalMes,totalMeuMes,me,allGastos:gastos,reload}),
+      screen==="agenda"&&React.createElement(AgendaScreen,{gastos}),
+      screen==="admin"&&me.is_admin&&React.createElement(AdminScreen,{members,gastos,reload,webhook,setWebhook})
+    )
+  );
+}
+
+function LoginScreen({onLogin}){
+  const[name,setName]=React.useState("");
+  const[pin,setPin]=React.useState("");
+  const[mode,setMode]=React.useState("join");
+  const[err,setErr]=React.useState("");
+  const[loading,setLoading]=React.useState(false);
+
+  async function go(){
+    if(!name.trim()||pin.length<4){setErr("Preencha nome e PIN (4 dígitos)");return}
+    setLoading(true);setErr("");
+    try{
+      if(mode==="join"){
+        const ms=await db.get("membros",`nome=eq.${encodeURIComponent(name.trim())}&pin=eq.${pin}`);
+        if(!ms?.length){setErr("Nome ou PIN incorretos");setLoading(false);return}
+        onLogin(ms[0]);
+      }else{
+        const ex=await db.get("membros",`nome=eq.${encodeURIComponent(name.trim())}`);
+        if(ex?.length){setErr("Nome já existe");setLoading(false);return}
+        const all=await db.get("membros");
+        const novo=await db.insert("membros",{nome:name.trim(),pin,is_admin:!all?.length});
+        if(!novo?.[0]){setErr("Erro ao criar conta");setLoading(false);return}
+        onLogin(novo[0]);
+      }
+    }catch{setErr("Erro de conexão")}
+    setLoading(false);
+  }
+
+  const inp={width:"100%",padding:"12px 14px",borderRadius:12,border:"1px solid #2a2745",background:"#13111f",color:"#e2e0f0",fontSize:14,outline:"none"};
+  return React.createElement("div",{style:{maxWidth:440,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,background:"#09090f"}},
+    React.createElement("div",{style:{width:64,height:64,borderRadius:18,background:"linear-gradient(135deg,#7c3aed,#db2777)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:18}},"💰"),
+    React.createElement("div",{style:{fontWeight:700,fontSize:20,color:"#f0eeff",marginBottom:4}},"Orçamento em Grupo"),
+    React.createElement("div",{style:{fontSize:13,color:"#6b6a8a",marginBottom:24,textAlign:"center"}},"Dados salvos na nuvem ☁️"),
+    React.createElement("div",{style:{display:"flex",gap:3,background:"#13111f",borderRadius:10,padding:3,marginBottom:16,width:"100%"}},
+      [["join","Entrar"],["register","Criar conta"]].map(([m,l])=>React.createElement("button",{key:m,onClick:()=>{setMode(m);setErr("")},style:{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,background:mode===m?"linear-gradient(135deg,#3730a3,#6d28d9)":"transparent",color:mode===m?"#ddd6fe":"#4a4870"}},l))
+    ),
+    React.createElement("div",{style:{width:"100%",display:"flex",flexDirection:"column",gap:10}},
+      React.createElement("input",{value:name,onChange:e=>setName(e.target.value),onKeyDown:e=>e.key==="Enter"&&go(),placeholder:"Seu nome",style:inp}),
+      React.createElement("input",{value:pin,onChange:e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4)),onKeyDown:e=>e.key==="Enter"&&go(),placeholder:"PIN (4 números)",type:"password",style:inp}),
+      err&&React.createElement("div",{style:{color:"#f87171",fontSize:12,textAlign:"center"}},err),
+      React.createElement("button",{onClick:go,disabled:loading,style:{width:"100%",padding:"13px",borderRadius:12,border:"none",cursor:"pointer",background:"linear-gradient(135deg,#7c3aed,#db2777)",color:"#fff",fontSize:15,fontWeight:700}},loading?"...":mode==="join"?"Entrar →":"Criar e entrar →")
+    )
+  );
+}
+
+function ChatScreen({me,reload,webhook}){
+  const[msgs,setMsgs]=React.useState([{role:"ai",text:`Oi, ${me.nome}! 👋 Me fala o que você gastou. Pode colocar tudo junto com vírgula e o preço se souber!`,items:[]}]);
+  const[input,setInput]=React.useState("");
+  const[loading,setLoading]=React.useState(false);
+  const bottomRef=React.useRef();
+  React.useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"})},[msgs]);
+
+  async function send(){
+    if(!input.trim()||loading)return;
+    const txt=input.trim();setInput("");setLoading(true);
+    setMsgs(p=>[...p,{role:"user",text:txt,items:[]}]);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:`Você é assistente de orçamento. Extraia itens e responda APENAS JSON: {"resposta":"texto curto","itens":[{"nome":"nome","valor":número ou null,"estimado":true/false,"categoria":"casa|beleza|saude|alimentacao|transporte|lazer|roupas|outros"}]}`,messages:[{role:"user",content:txt}]})});
+      const data=await res.json();
+      let parsed;try{parsed=JSON.parse(data.content?.[0]?.text||"{}")}catch{parsed={resposta:"Anotado!",itens:[]}}
+      const itens=[];
+      for(const i of(parsed.itens||[])){
+        const g={membro_id:me.id,membro_nome:me.nome,nome:i.nome,valor:i.valor??null,estimado:i.estimado??false,categoria:i.categoria||detectCat(i.nome),mes:monthKey(new Date()),apagado:false};
+        const[saved]=await db.insert("gastos",g);
+        if(saved){
+          itens.push(saved);
+          if(webhook?.trim())try{await fetch(webhook.trim(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({membro:me.nome,item:saved.nome,categoria:CATS[saved.categoria]?.label,emoji:CATS[saved.categoria]?.emoji,valor:saved.valor,data:new Date().toLocaleDateString("pt-BR"),hora:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})})})}catch{}
+        }
+      }
+      await reload();
+      setMsgs(p=>[...p,{role:"ai",text:parsed.resposta||"Registrado!",items:itens}]);
+    }catch{setMsgs(p=>[...p,{role:"ai",text:"Ops! Tenta de novo.",items:[]}])}
+    setLoading(false);
+  }
+
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"calc(100vh - 110px)"}},
+    React.createElement("div",{style:{flex:1,overflowY:"auto",padding:"14px 14px 0"}},
+      msgs.map((m,i)=>React.createElement("div",{key:i,style:{marginBottom:12,display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}},
+        React.createElement("div",{style:{maxWidth:"86%"}},
+          React.createElement("div",{style:{padding:"10px 14px",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.role==="user"?"linear-gradient(135deg,#3730a3,#6d28d9)":"#13111f",border:m.role==="ai"?"1px solid #1e1d38":"none",fontSize:14,lineHeight:1.55,color:m.role==="user"?"#ede9ff":"#d4d0f0"}},m.text),
+          m.items?.length>0&&React.createElement("div",{style:{marginTop:8,background:"#13111f",borderRadius:12,border:"1px solid #1e1d38",overflow:"hidden"}},
+            React.createElement("div",{style:{padding:"6px 12px",fontSize:11,color:"#34d399",borderBottom:"1px solid #1a1930"}},"✓ "+m.items.length+" item(s) salvo(s) ☁️"),
+            m.items.map(it=>{
+              const cat=CATS[it.categoria]||CATS.outros;
+              const sp=it.valor==null||it.estimado;
+              return React.createElement("div",{key:it.id,style:{padding:"9px 12px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid #111020",borderLeft:sp?"3px solid #f97316":"3px solid transparent"}},
+                React.createElement("div",{style:{width:28,height:28,borderRadius:8,background:cat.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},cat.emoji),
+                React.createElement("div",{style:{flex:1}},
+                  React.createElement("div",{style:{fontSize:13,fontWeight:500,color:"#e2e0f0"}},it.nome),
+                  React.createElement("div",{style:{fontSize:11,color:cat.color}},cat.label+(sp?" ~ estimado":""))
+                ),
+                React.createElement("div",{style:{fontSize:13,fontWeight:700,color:sp?"#f97316":cat.color}},it.valor==null?"💡":fmtBRL(it.valor))
+              );
+            })
+          )
+        )
+      )),
+      loading&&React.createElement("div",{style:{display:"flex",gap:5,padding:"10px 14px",background:"#13111f",borderRadius:16,width:"fit-content",border:"1px solid #1e1d38",marginBottom:12}},
+        [0,1,2].map(i=>React.createElement("div",{key:i,style:{width:7,height:7,borderRadius:"50%",background:"#7c3aed",animation:`dot 1s ${i*.2}s infinite`}}))
+      ),
+      React.createElement("div",{ref:bottomRef})
+    ),
+    React.createElement("div",{style:{padding:14}},
+      React.createElement("div",{style:{display:"flex",gap:8,background:"#13111f",borderRadius:16,padding:"4px 4px 4px 14px",border:"1px solid #1e1d38"}},
+        React.createElement("input",{value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>e.key==="Enter"&&send(),placeholder:"Ex: shampoo R$28, mercado R$150...",style:{flex:1,background:"transparent",border:"none",outline:"none",color:"#e2e0f0",fontSize:14}}),
+        React.createElement("button",{onClick:send,disabled:!input.trim()||loading,style:{padding:"8px 16px",borderRadius:12,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,background:input.trim()?"linear-gradient(135deg,#7c3aed,#db2777)":"#1e1d38",color:"#fff"}},"→")
+      )
+    )
+  );
+}
+
+function PainelScreen({gastos,members,month,setMonth,totalMes,totalMeuMes,me,allGastos,reload}){
+  const[confirm,setConfirm]=React.useState(null);
+  const[editando,setEditando]=React.useState(null);
+  const[activeUser,setActiveUser]=React.useState("all");
+  const filtrados=activeUser==="all"?gastos:gastos.filter(g=>g.membro_id===activeUser);
+  const porCat={};
+  filtrados.forEach(g=>{if(!porCat[g.categoria])porCat[g.categoria]={total:0,count:0};porCat[g.categoria].total+=g.valor||0;porCat[g.categoria].count+=1});
+  const totalF=Object.values(porCat).reduce((s,c)=>s+c.total,0);
+  const podeEditar=g=>me.is_admin||g.membro_id===me.id;
+
+  async function apagar(g){await db.softDelete("gastos",g.id);await reload();setConfirm(null)}
+  async function editar(g,nome,valor){await db.update("gastos",g.id,{nome,valor:valor===""?null:parseFloat(valor),estimado:valor===""});await reload();setEditando(null)}
+
+  return React.createElement("div",{style:{padding:14}},
+    confirm&&React.createElement("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:20}},
+      React.createElement("div",{style:{background:"#1a1730",borderRadius:16,padding:20,width:"100%",maxWidth:360,border:"1px solid #f87171"}},
+        React.createElement("div",{style:{fontSize:15,fontWeight:700,color:"#f87171",marginBottom:8}},"⚠️ Apagar gasto?"),
+        React.createElement("div",{style:{fontSize:13,color:"#d4d0f0",marginBottom:4}},confirm.nome),
+        React.createElement("div",{style:{fontSize:16,fontWeight:700,color:"#a78bfa",marginBottom:16}},fmtBRL(confirm.valor)),
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          React.createElement("button",{onClick:()=>setConfirm(null),style:{flex:1,padding:"10px",borderRadius:10,border:"1px solid #2a2745",background:"transparent",color:"#d4d0f0",cursor:"pointer"}},"Cancelar"),
+          React.createElement("button",{onClick:()=>apagar(confirm),style:{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#dc2626",color:"#fff",fontWeight:700,cursor:"pointer"}},"Apagar")
+        )
+      )
+    ),
+    editando&&React.createElement(EditModal,{gasto:editando,onSave:editar,onClose:()=>setEditando(null)}),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
+      React.createElement("button",{onClick:()=>setMonth(d=>new Date(d.getFullYear(),d.getMonth()-1)),style:{background:"none",border:"none",color:"#a78bfa",cursor:"pointer",fontSize:22}},"‹"),
+      React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#ddd6fe"}},month.toLocaleDateString("pt-BR",{month:"long",year:"numeric"})),
+      React.createElement("button",{onClick:()=>setMonth(d=>new Date(d.getFullYear(),d.getMonth()+1)),style:{background:"none",border:"none",color:"#a78bfa",cursor:"pointer",fontSize:22}},"›")
+    ),
+    React.createElement("div",{style:{background:"linear-gradient(135deg,#1e1b38,#2d2652)",borderRadius:16,padding:18,marginBottom:14,border:"1px solid #3730a3"}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between"}},
+        React.createElement("div",null,React.createElement("div",{style:{fontSize:11,color:"#6b6a8a",marginBottom:3}},"Total do grupo"),React.createElement("div",{style:{fontSize:26,fontWeight:700,color:"#c4b5fd"}},fmtBRL(totalMes))),
+        React.createElement("div",{style:{textAlign:"right"}},React.createElement("div",{style:{fontSize:11,color:"#6b6a8a",marginBottom:3}},"Meu gasto"),React.createElement("div",{style:{fontSize:20,fontWeight:700,color:"#f472b6"}},fmtBRL(totalMeuMes)))
+      )
+    ),
+    React.createElement("div",{style:{display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:4}},
+      React.createElement("button",{onClick:()=>setActiveUser("all"),style:{padding:"5px 12px",borderRadius:20,border:`1px solid ${activeUser==="all"?"#a78bfa":"#2a2745"}`,background:activeUser==="all"?"#a78bfa22":"transparent",color:activeUser==="all"?"#a78bfa":"#5a5878",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}},"Todos"),
+      members.map(m=>React.createElement("button",{key:m.id,onClick:()=>setActiveUser(m.id),style:{padding:"5px 12px",borderRadius:20,border:`1px solid ${activeUser===m.id?"#f472b6":"#2a2745"}`,background:activeUser===m.id?"#f472b622":"transparent",color:activeUser===m.id?"#f472b6":"#5a5878",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}},m.nome+(m.is_admin?" 👑":"")))
+    ),
+    React.createElement("div",{style:{fontSize:11,color:"#6b6a8a",m
