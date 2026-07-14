@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Orçamento Familiar</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#09090f;color:#e2e0f0;font-family:system-ui,sans-serif;min-height:100vh}
+.wrap{max-width:440px;margin:0 auto;padding:16px}
+.center{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#13111f;border:1px solid #2a2745;border-radius:16px;padding:28px;width:100%;max-width:400px;margin:20px auto}
+h1{font-size:22px;font-weight:700;color:#f0eeff;margin-bottom:6px;text-align:center}
+p.sub{font-size:13px;color:#6b6a8a;text-align:center;margin-bottom:24px}
+.tabs{display:flex;gap:3px;background:#0d0c1a;border-radius:10px;padding:3px;margin-bottom:20px}
+.tab{flex:1;padding:8px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:#4a4870}
+.tab.active{background:linear-gradient(135deg,#3730a3,#6d28d9);color:#ddd6fe}
+input,textarea,select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a2745;background:#1a1730;color:#e2e0f0;font-size:14px;outline:none;margin-bottom:10px;font-family:inherit}
+textarea{resize:none;min-height:64px}
+button.primary{width:100%;padding:13px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-size:15px;font-weight:700;margin-top:4px}
+button.primary:disabled{opacity:.5}
+.error{color:#f87171;font-size:12px;text-align:center;margin-bottom:8px;min-height:16px}
+.icon{font-size:40px;text-align:center;margin-bottom:16px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.topbar h2{font-size:18px;color:#f0eeff}
+.who{font-size:12px;color:#8b89ad}
+.logout{background:none;border:none;color:#6b6a8a;font-size:12px;cursor:pointer;text-decoration:underline}
+.navtabs{display:flex;gap:6px;margin-bottom:16px}
+.navtab{flex:1;padding:10px;border-radius:12px;border:1px solid #2a2745;background:#13111f;color:#8b89ad;font-size:13px;font-weight:600;cursor:pointer}
+.navtab.active{background:linear-gradient(135deg,#3730a3,#6d28d9);color:#fff;border-color:transparent}
+.msg{background:#1a1730;border:1px solid #2a2745;border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+.msg.me{background:#241d3d}
+.gasto{display:flex;align-items:center;gap:10px;background:#13111f;border:1px solid #2a2745;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.gasto .emoji{font-size:22px}
+.gasto .info{flex:1;min-width:0}
+.gasto .nome{font-size:14px;color:#e2e0f0;font-weight:600}
+.gasto .meta{font-size:11px;color:#6b6a8a}
+.gasto .val{font-size:14px;font-weight:700;color:#a5f3b8}
+.gasto .val.est{color:#f9a03f}
+.gasto .act{background:none;border:none;color:#6b6a8a;font-size:16px;cursor:pointer;padding:2px 4px}
+.cal{color:#93c5fd;text-decoration:none;font-size:16px}
+.stats{display:flex;gap:8px;margin-bottom:16px}
+.stat{flex:1;background:#13111f;border:1px solid #2a2745;border-radius:12px;padding:12px;text-align:center}
+.stat .n{font-size:18px;font-weight:800;color:#f0eeff}
+.stat .l{font-size:11px;color:#6b6a8a;margin-top:2px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+.bar-row .lab{width:96px;color:#8b89ad}
+.bar-track{flex:1;background:#1a1730;border-radius:6px;height:14px;overflow:hidden}
+.bar-fill{height:100%;border-radius:6px}
+.bar-row .v{width:64px;text-align:right;color:#b8b6d0}
+.section-title{font-size:13px;color:#8b89ad;font-weight:700;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.04em}
+.hidden{display:none}
+.hint{font-size:11px;color:#6b6a8a;margin-bottom:14px;line-height:1.5}
+.member{display:flex;align-items:center;justify-content:space-between;background:#13111f;border:1px solid #2a2745;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.member .n{font-size:14px;color:#e2e0f0}
+.badge{font-size:10px;background:#3730a3;color:#ddd6fe;padding:2px 6px;border-radius:6px;margin-left:6px}
+.spinner{text-align:center;color:#6b6a8a;font-size:12px;padding:10px}
+</style>
+</head>
+<body>
+
+<!-- ================= TELA DE LOGIN ================= -->
+<div id="loginScreen" class="center">
+  <div class="card">
+    <div class="icon">💰</div>
+    <h1>Orçamento em Grupo</h1>
+    <p class="sub">Dados salvos na nuvem ☁️</p>
+    <div class="tabs">
+      <button class="tab" id="tab-entrar" onclick="setMode('entrar')">Entrar</button>
+      <button class="tab active" id="tab-criar" onclick="setMode('criar')">Criar conta</button>
+    </div>
+    <input type="text" id="nome" placeholder="Seu nome" autocomplete="off"/>
+    <input type="password" id="pin" placeholder="PIN (4 números)" maxlength="4" inputmode="numeric"/>
+    <div class="error" id="erro"></div>
+    <button class="primary" id="btn" onclick="entrar()">Criar e entrar →</button>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="appScreen" class="wrap hidden">
+  <div class="topbar">
+    <div>
+      <h2>💰 Orçamento</h2>
+      <div class="who" id="whoami"></div>
+    </div>
+    <button class="logout" onclick="logout()">sair</button>
+  </div>
+
+  <div class="navtabs">
+    <button class="navtab active" id="nav-chat" onclick="showView('chat')">💬 Chat</button>
+    <button class="navtab" id="nav-painel" onclick="showView('painel')">📊 Painel</button>
+    <button class="navtab hidden" id="nav-admin" onclick="showView('admin')">👑 Admin</button>
+  </div>
+
+  <!-- CHAT -->
+  <div id="view-chat">
+    <p class="hint">Escreva o que gastou. Ex: "shampoo R$28 e mercado estimado 150". A IA categoriza e registra.</p>
+    <div id="chatLog"></div>
+    <textarea id="chatInput" placeholder="O que você gastou?"></textarea>
+    <button class="primary" id="chatBtn" onclick="registrarGasto()">Registrar →</button>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="view-painel" class="hidden">
+    <div class="stats">
+      <div class="stat"><div class="n" id="totalGrupo">R$ 0</div><div class="l">Total do grupo</div></div>
+      <div class="stat"><div class="n" id="totalMeu">R$ 0</div><div class="l">Meus gastos</div></div>
+    </div>
+    <div class="section-title">Por categoria</div>
+    <div id="chart"></div>
+    <div class="section-title">Histórico</div>
+    <div id="historico"></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="view-admin" class="hidden">
+    <div class="section-title">Notificação no Telegram</div>
+    <p class="hint">Cole a URL do webhook (Make.com) que dispara a notificação a cada novo gasto. Fica salva neste aparelho.</p>
+    <input type="text" id="webhookUrl" placeholder="https://hook.make.com/..."/>
+    <button class="primary" onclick="salvarWebhook()">Salvar webhook</button>
+    <div class="error" id="webhookMsg"></div>
+
+    <div class="section-title">Membros</div>
+    <div id="membrosList"></div>
+    <input type="text" id="novoNome" placeholder="Nome do novo membro" autocomplete="off"/>
+    <input type="password" id="novoPin" placeholder="PIN (4 números)" maxlength="4" inputmode="numeric"/>
+    <button class="primary" onclick="addMembro()">Adicionar membro</button>
+    <div class="error" id="membroMsg"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  CONFIGURAÇÃO
+// ============================================================
+const SUPABASE_URL = "https://ktwmitaifevjxhowyjpm.supabase.co";
+// ⚠️ COLE AQUI A CHAVE PUBLICÁVEL DO SUPABASE (começa com "sb_publishable_"):
+const SUPABASE_KEY = "COLE_SUA_CHAVE_PUBLICAVEL_AQUI";
+
+const CATS = {
+  "Casa":        { emoji:"🏠", cor:"#60a5fa" },
+  "Beleza":      { emoji:"💄", cor:"#f472b6" },
+  "Saúde":       { emoji:"💊", cor:"#34d399" },
+  "Alimentação": { emoji:"🍱", cor:"#fbbf24" },
+  "Transporte":  { emoji:"🚌", cor:"#a78bfa" },
+  "Lazer":       { emoji:"🎮", cor:"#22d3ee" },
+  "Roupas":      { emoji:"👗", cor:"#fb7185" },
+  "Outros":      { emoji:"📦", cor:"#94a3b8" }
+};
+
+let user = null;      // { id, nome, is_admin }
+let mode = "criar";
+let painelTimer = null;
+
+// ============================================================
+//  HELPERS SUPABASE (REST direto, sem SDK)
+// ============================================================
+async function sb(path, opts = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation",
+      ...(opts.headers || {})
+    }
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t || res.statusText);
+  }
+  return res.status === 204 ? null : res.json();
+}
+const money = v => "R$ " + (Number(v) || 0).toFixed(2).replace(".", ",");
+const mesAtual = () => new Date().toISOString().slice(0, 7);
+
+// ============================================================
+//  LOGIN
+// ============================================================
+function setMode(m) {
+  mode = m;
+  document.getElementById("tab-entrar").classList.toggle("active", m === "entrar");
+  document.getElementById("tab-criar").classList.toggle("active", m === "criar");
+  document.getElementById("btn").textContent = m === "criar" ? "Criar e entrar →" : "Entrar →";
+  document.getElementById("erro").textContent = "";
+}
+
+async function entrar() {
+  const nome = document.getElementById("nome").value.trim();
+  const pin = document.getElementById("pin").value.trim();
+  const erro = document.getElementById("erro");
+  erro.textContent = "";
+  if (!nome || pin.length !== 4) { erro.textContent = "Preencha nome e PIN de 4 dígitos."; return; }
+
+  const btn = document.getElementById("btn");
+  btn.disabled = true;
+  try {
+    if (mode === "criar") {
+      const existentes = await sb(`membros?nome=eq.${encodeURIComponent(nome)}&select=id`);
+      if (existentes.length) { erro.textContent = "Esse nome já existe. Use 'Entrar'."; btn.disabled = false; return; }
+      const total = await sb(`membros?select=id`);
+      const novo = await sb(`membros`, {
+        method: "POST",
+        body: JSON.stringify({ nome, pin, is_admin: total.length === 0 })
+      });
+      logar(novo[0]);
+    } else {
+      const achou = await sb(`membros?nome=eq.${encodeURIComponent(nome)}&pin=eq.${encodeURIComponent(pin)}&select=*`);
+      if (!achou.length) { erro.textContent = "Nome ou PIN incorretos."; btn.disabled = false; return; }
+      logar(achou[0]);
+    }
+  } catch (e) {
+    erro.textContent = "Erro de conexão. Confira a chave do Supabase.";
+    btn.disabled = false;
+  }
+}
+
+function logar(m) {
+  user = { id: m.id, nome: m.nome, is_admin: m.is_admin };
+  localStorage.setItem("of_user", JSON.stringify(user));
+  abrirApp();
+}
+function logout() {
+  localStorage.removeItem("of_user");
+  if (painelTimer) clearInterval(painelTimer);
+  location.reload();
+}
+
+// ============================================================
+//  APP
+// ============================================================
+function abrirApp() {
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("appScreen").classList.remove("hidden");
+  document.getElementById("whoami").textContent = user.nome + (user.is_admin ? " · admin" : "");
+  document.getElementById("nav-admin").classList.toggle("hidden", !user.is_admin);
+  const wh = localStorage.getItem("of_webhook");
+  if (wh) document.getElementById("webhookUrl").value = wh;
+  showView("chat");
+}
+
+function showView(v) {
+  ["chat", "painel", "admin"].forEach(x => {
+    document.getElementById("view-" + x).classList.toggle("hidden", x !== v);
+    document.getElementById("nav-" + x).classList.toggle("active", x === v);
+  });
+  if (painelTimer) { clearInterval(painelTimer); painelTimer = null; }
+  if (v === "painel") { carregarPainel(); painelTimer = setInterval(carregarPainel, 10000); }
+  if (v === "admin") carregarMembros();
+}
+
+// ---------- CHAT ----------
+function addChat(texto, me) {
+  const d = document.createElement("div");
+  d.className = "msg" + (me ? " me" : "");
+  d.textContent = texto;
+  document.getElementById("chatLog").appendChild(d);
+  d.scrollIntoView({ behavior: "smooth" });
+}
+
+async function registrarGasto() {
+  const input = document.getElementById("chatInput");
+  const texto = input.value.trim();
+  if (!texto) return;
+  addChat(texto, true);
+  input.value = "";
+  const btn = document.getElementById("chatBtn");
+  btn.disabled = true;
+
+  const loading = document.createElement("div");
+  loading.className = "spinner";
+  loading.textContent = "🤖 pensando...";
+  document.getElementById("chatLog").appendChild(loading);
+
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texto })
+    });
+    const data = await r.json();
+    loading.remove();
+    if (!r.ok) { addChat("⚠️ " + (data.error || "Erro na IA"), false); btn.disabled = false; return; }
+    if (!data.itens.length) { addChat("Não entendi nenhum gasto. Tente de novo 🙂", false); btn.disabled = false; return; }
+
+    for (const it of data.itens) {
+      const cat = CATS[it.categoria] ? it.categoria : "Outros";
+      const gasto = await sb("gastos", {
+        method: "POST",
+        body: JSON.stringify({
+          membro_id: user.id,
+          membro_nome: user.nome,
+          nome: it.nome,
+          valor: it.estimado ? null : it.valor,
+          estimado: !!it.estimado,
+          categoria: cat,
+          mes: mesAtual(),
+          data_lembrete: it.data_lembrete || null,
+          apagado: false
+        })
+      });
+      const g = gasto[0];
+      const valTxt = g.estimado ? "sem preço (estimativa)" : money(g.valor);
+      addChat(`${CATS[cat].emoji} ${g.nome} → ${valTxt}`, false);
+      dispararWebhook(g);
+    }
+  } catch (e) {
+    loading.remove();
+    addChat("⚠️ Falha ao registrar. Tente de novo.", false);
+  }
+  btn.disabled = false;
+}
+
+function dispararWebhook(g) {
+  const url = localStorage.getItem("of_webhook");
+  if (!url) return;
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      membro: g.membro_nome, item: g.nome, categoria: g.categoria,
+      valor: g.estimado ? "estimado" : money(g.valor),
+      data: new Date().toLocaleString("pt-BR")
+    })
+  }).catch(() => {});
+}
+
+// ---------- PAINEL ----------
+async function carregarPainel() {
+  let dados;
+  try { dados = await sb("gastos?apagado=eq.false&order=criado_em.desc"); }
+  catch { return; }
+
+  let totalGrupo = 0, totalMeu = 0;
+  const porCat = {};
+  for (const g of dados) {
+    const v = Number(g.valor) || 0;
+    totalGrupo += v;
+    if (g.membro_id === user.id) totalMeu += v;
+    porCat[g.categoria] = (porCat[g.categoria] || 0) + v;
+  }
+  document.getElementById("totalGrupo").textContent = money(totalGrupo);
+  document.getElementById("totalMeu").textContent = money(totalMeu);
+
+  const maxCat = Math.max(1, ...Object.values(porCat));
+  document.getElementById("chart").innerHTML = Object.keys(CATS).map(cat => {
+    const v = porCat[cat] || 0;
+    const pct = Math.round((v / maxCat) * 100);
+    return `<div class="bar-row">
+      <div class="lab">${CATS[cat].emoji} ${cat}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CATS[cat].cor}"></div></div>
+      <div class="v">${money(v)}</div></div>`;
+  }).join("");
+
+  document.getElementById("historico").innerHTML = dados.length
+    ? dados.map(renderGasto).join("")
+    : '<div class="spinner">Nenhum gasto ainda.</div>';
+}
+
+function renderGasto(g) {
+  const cat = CATS[g.categoria] || CATS["Outros"];
+  const valClass = g.estimado ? "val est" : "val";
+  const valTxt = g.estimado ? "estimado" : money(g.valor);
+  const podeApagar = user.is_admin || g.membro_id === user.id;
+  const calBtn = g.data_lembrete ? calendarLink(g) : "";
+  const delBtn = podeApagar ? `<button class="act" onclick="apagarGasto('${g.id}')" title="apagar">🗑️</button>` : "";
+  return `<div class="gasto">
+    <div class="emoji">${cat.emoji}</div>
+    <div class="info">
+      <div class="nome">${escapeHtml(g.nome)}</div>
+      <div class="meta">${escapeHtml(g.membro_nome)} · ${g.categoria}</div>
+    </div>
+    <div class="${valClass}">${valTxt}</div>
+    ${calBtn}${delBtn}
+  </div>`;
+}
+
+function calendarLink(g) {
+  const d = (g.data_lembrete || "").replace(/-/g, "");
+  if (d.length !== 8) return "";
+  const texto = encodeURIComponent(`Gasto: ${g.nome}`);
+  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${texto}&dates=${d}/${d}`;
+  return `<a class="cal" href="${url}" target="_blank" rel="noopener" title="Google Agenda">📅</a>`;
+}
+
+async function apagarGasto(id) {
+  if (!confirm("Apagar este gasto?")) return;
+  try {
+    await sb(`gastos?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ apagado: true }) });
+    carregarPainel();
+  } catch { alert("Erro ao apagar."); }
+}
+
+// ---------- ADMIN ----------
+function salvarWebhook() {
+  const url = document.getElementById("webhookUrl").value.trim();
+  localStorage.setItem("of_webhook", url);
+  const m = document.getElementById("webhookMsg");
+  m.style.color = "#34d399";
+  m.textContent = url ? "Webhook salvo ✓" : "Webhook removido.";
+  setTimeout(() => { m.textContent = ""; }, 2500);
+}
+
+async function carregarMembros() {
+  let membros;
+  try { membros = await sb("membros?select=*&order=criado_em.asc"); }
+  catch { return; }
+  document.getElementById("membrosList").innerHTML = membros.map(m => {
+    const badge = m.is_admin ? '<span class="badge">admin</span>' : "";
+    const del = (!m.is_admin && m.id !== user.id)
+      ? `<button class="act" onclick="removerMembro('${m.id}','${escapeHtml(m.nome)}')">🗑️</button>` : "";
+    return `<div class="member"><div class="n">${escapeHtml(m.nome)}${badge}</div>${del}</div>`;
+  }).join("");
+}
+
+async function addMembro() {
+  const nome = document.getElementById("novoNome").value.trim();
+  const pin = document.getElementById("novoPin").value.trim();
+  const msg = document.getElementById("membroMsg");
+  msg.style.color = "#f87171";
+  if (!nome || pin.length !== 4) { msg.textContent = "Preencha nome e PIN de 4 dígitos."; return; }
+  try {
+    const existe = await sb(`membros?nome=eq.${encodeURIComponent(nome)}&select=id`);
+    if (existe.length) { msg.textContent = "Esse nome já existe."; return; }
+    await sb("membros", { method: "POST", body: JSON.stringify({ nome, pin, is_admin: false }) });
+    document.getElementById("novoNome").value = "";
+    document.getElementById("novoPin").value = "";
+    msg.style.color = "#34d399";
+    msg.textContent = "Membro adicionado ✓";
+    carregarMembros();
+    setTimeout(() => { msg.textContent = ""; }, 2500);
+  } catch { msg.textContent = "Erro ao adicionar."; }
+}
+
+async function removerMembro(id, nome) {
+  if (!confirm(`Remover ${nome}?`)) return;
+  try { await sb(`membros?id=eq.${id}`, { method: "DELETE" }); carregarMembros(); }
+  catch { alert("Erro ao remover."); }
+}
+
+// ---------- util ----------
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+// ---------- boot ----------
+(function init() {
+  const saved = localStorage.getItem("of_user");
+  if (saved) { try { user = JSON.parse(saved); abrirApp(); } catch { localStorage.removeItem("of_user"); } }
+  setMode("criar");
+})();
+</script>
+</body>
+</html>
