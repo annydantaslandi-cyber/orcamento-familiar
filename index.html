@@ -156,21 +156,46 @@ let painelTimer = null;
 //  HELPERS SUPABASE (REST direto, sem SDK)
 // ============================================================
 async function sb(path, opts = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...opts,
-    headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": "return=representation",
-      ...(opts.headers || {})
-    }
-  });
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...opts,
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+        ...(opts.headers || {})
+      }
+    });
+  } catch (e) {
+    // fetch só estoura assim quando nem chegou no servidor (DNS/rede/CORS).
+    // Sintoma clássico de projeto Supabase pausado: o domínio some do DNS.
+    throw Object.assign(new Error("sem resposta do servidor"), { kind: "rede" });
+  }
   if (!res.ok) {
     const t = await res.text();
-    throw new Error(t || res.statusText);
+    throw Object.assign(new Error(t || res.statusText), { status: res.status, kind: classificaErro(res.status) });
   }
   return res.status === 204 ? null : res.json();
+}
+
+// Traduz a falha para uma causa provável — em vez de culpar sempre a chave.
+function classificaErro(status) {
+  if (status === 401 || status === 403) return "chave";
+  if (status === 404) return "tabela";
+  if (status >= 500) return "banco";   // inclui 521 do Cloudflare = banco restaurando
+  return "outro";
+}
+
+function msgErro(e) {
+  switch (e && e.kind) {
+    case "rede":   return "Sem conexão com o banco. Ele pode estar pausado no Supabase.";
+    case "banco":  return "Banco fora do ar ou reiniciando. Tente de novo em 1 minuto.";
+    case "chave":  return "O banco recusou a chave. Confira a chave publicável / RLS.";
+    case "tabela": return "Tabela não encontrada no banco.";
+    default:       return "Erro inesperado: " + String((e && e.message) || "?").slice(0, 90);
+  }
 }
 const money = v => "R$ " + (Number(v) || 0).toFixed(2).replace(".", ",");
 const mesAtual = () => new Date().toISOString().slice(0, 7);
@@ -211,7 +236,7 @@ async function entrar() {
       logar(achou[0]);
     }
   } catch (e) {
-    erro.textContent = "Erro de conexão. Confira a chave do Supabase.";
+    erro.textContent = msgErro(e);
     btn.disabled = false;
   }
 }
@@ -307,7 +332,7 @@ async function registrarGasto() {
     }
   } catch (e) {
     loading.remove();
-    addChat("⚠️ Falha ao registrar. Tente de novo.", false);
+    addChat("⚠️ " + msgErro(e), false);
   }
   btn.disabled = false;
 }
@@ -330,7 +355,13 @@ function dispararWebhook(g) {
 async function carregarPainel() {
   let dados;
   try { dados = await sb("gastos?apagado=eq.false&order=criado_em.desc"); }
-  catch { return; }
+  catch (e) {
+    // Antes isso dava `return` mudo: o painel ficava com cara de "nenhum gasto"
+    // quando na verdade estava quebrado. Falha silenciosa mente para o usuário.
+    document.getElementById("historico").innerHTML =
+      `<div class="spinner" style="color:#f87171">⚠️ ${escapeHtml(msgErro(e))}</div>`;
+    return;
+  }
 
   let totalGrupo = 0, totalMeu = 0;
   const porCat = {};
@@ -389,7 +420,7 @@ async function apagarGasto(id) {
   try {
     await sb(`gastos?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ apagado: true }) });
     carregarPainel();
-  } catch { alert("Erro ao apagar."); }
+  } catch (e) { alert("Não deu pra apagar.\n\n" + msgErro(e)); }
 }
 
 // ---------- ADMIN ----------
@@ -405,7 +436,11 @@ function salvarWebhook() {
 async function carregarMembros() {
   let membros;
   try { membros = await sb("membros?select=*&order=criado_em.asc"); }
-  catch { return; }
+  catch (e) {
+    document.getElementById("membrosList").innerHTML =
+      `<div class="spinner" style="color:#f87171">⚠️ ${escapeHtml(msgErro(e))}</div>`;
+    return;
+  }
   document.getElementById("membrosList").innerHTML = membros.map(m => {
     const badge = m.is_admin ? '<span class="badge">admin</span>' : "";
     const del = (!m.is_admin && m.id !== user.id)
@@ -430,13 +465,13 @@ async function addMembro() {
     msg.textContent = "Membro adicionado ✓";
     carregarMembros();
     setTimeout(() => { msg.textContent = ""; }, 2500);
-  } catch { msg.textContent = "Erro ao adicionar."; }
+  } catch (e) { msg.style.color = "#f87171"; msg.textContent = msgErro(e); }
 }
 
 async function removerMembro(id, nome) {
   if (!confirm(`Remover ${nome}?`)) return;
   try { await sb(`membros?id=eq.${id}`, { method: "DELETE" }); carregarMembros(); }
-  catch { alert("Erro ao remover."); }
+  catch (e) { alert("Não deu pra remover.\n\n" + msgErro(e)); }
 }
 
 // ---------- util ----------
