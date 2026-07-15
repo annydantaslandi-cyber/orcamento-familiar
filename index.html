@@ -198,6 +198,10 @@ function msgErro(e) {
   }
 }
 const money = v => "R$ " + (Number(v) || 0).toFixed(2).replace(".", ",");
+// Um gasto pode ter valor E ser estimativa (RF02). Só é "sem preço" quando
+// valor é null de verdade. O sufixo ~ sinaliza a estimativa junto da laranja.
+const temValor = g => g.valor !== null && g.valor !== undefined;
+const textoValor = g => !temValor(g) ? "sem preço" : (g.estimado ? "~" + money(g.valor) : money(g.valor));
 const mesAtual = () => new Date().toISOString().slice(0, 7);
 
 // ============================================================
@@ -317,7 +321,10 @@ async function registrarGasto() {
           membro_id: user.id,
           membro_nome: user.nome,
           nome: it.nome,
-          valor: it.estimado ? null : it.valor,
+          // Guardar o valor SEMPRE que a pessoa disse um — "estimado" fala da
+          // confiança no número, não da ausência dele (RF02). Só é null quando
+          // nenhum valor foi informado.
+          valor: (typeof it.valor === "number" && isFinite(it.valor)) ? it.valor : null,
           estimado: !!it.estimado,
           categoria: cat,
           mes: mesAtual(),
@@ -326,8 +333,7 @@ async function registrarGasto() {
         })
       });
       const g = gasto[0];
-      const valTxt = g.estimado ? "sem preço (estimativa)" : money(g.valor);
-      addChat(`${CATS[cat].emoji} ${g.nome} → ${valTxt}`, false);
+      addChat(`${CATS[cat].emoji} ${g.nome} → ${textoValor(g)}`, false);
       dispararWebhook(g);
     }
   } catch (e) {
@@ -392,7 +398,7 @@ async function carregarPainel() {
 function renderGasto(g) {
   const cat = CATS[g.categoria] || CATS["Outros"];
   const valClass = g.estimado ? "val est" : "val";
-  const valTxt = g.estimado ? "estimado" : money(g.valor);
+  const valTxt = textoValor(g);
   const podeApagar = user.is_admin || g.membro_id === user.id;
   const calBtn = g.data_lembrete ? calendarLink(g) : "";
   const delBtn = podeApagar ? `<button class="act" onclick="apagarGasto('${g.id}')" title="apagar">🗑️</button>` : "";

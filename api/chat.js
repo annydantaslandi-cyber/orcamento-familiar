@@ -49,8 +49,11 @@ export default async function handler(req, res) {
   const system =
     "Você interpreta mensagens de gastos domésticos em português do Brasil. " +
     "Extraia cada item de gasto com nome curto, valor em reais (número) e categoria. " +
-    "Se o valor não foi informado ou é aproximado/estimado, marque estimado=true e coloque valor=null. " +
-    "Se o valor é exato, estimado=false. " +
+    "estimado=true quando o valor for aproximado/estimado OU quando não houver valor nenhum; " +
+    "estimado=false quando a pessoa informou um valor exato. " +
+    "IMPORTANTE: se a pessoa disse um valor, MANTENHA esse valor mesmo que seja uma estimativa " +
+    "(ex: 'mercado estimado 150' → valor=150, estimado=true). " +
+    "Use valor=null APENAS quando nenhum valor foi informado (ex: 'comprei shampoo'). " +
     `Categorias possíveis: ${CATEGORIAS.join(", ")}. Use exatamente esses nomes. ` +
     "Casa=mercado/limpeza/luz/água; Beleza=shampoo/maquiagem/skincare; Saúde=remédio/médico/academia; " +
     "Alimentação=delivery/restaurante/lanche; Transporte=uber/ônibus/gasolina; Lazer=cinema/streaming/festa; " +
