@@ -115,9 +115,8 @@ button.primary:disabled{opacity:.5}
   <!-- ADMIN -->
   <div id="view-admin" class="hidden">
     <div class="section-title">Notificação no Telegram</div>
-    <p class="hint">Cole a URL do webhook (Make.com) que dispara a notificação a cada novo gasto. Fica salva neste aparelho.</p>
-    <input type="text" id="webhookUrl" placeholder="https://hook.make.com/..."/>
-    <button class="primary" onclick="salvarWebhook()">Salvar webhook</button>
+    <p class="hint">A cada gasto novo, o grupo recebe um aviso no Telegram automaticamente. Configurado no servidor (nada pra preencher aqui). Toque abaixo pra testar.</p>
+    <button class="primary" onclick="testarNotificacao()">Testar notificação 🧪</button>
     <div class="error" id="webhookMsg"></div>
 
     <div class="section-title">Membros</div>
@@ -264,8 +263,6 @@ function abrirApp() {
   document.getElementById("appScreen").classList.remove("hidden");
   document.getElementById("whoami").textContent = user.nome + (user.is_admin ? " · admin" : "");
   document.getElementById("nav-admin").classList.toggle("hidden", !user.is_admin);
-  const wh = localStorage.getItem("of_webhook");
-  if (wh) document.getElementById("webhookUrl").value = wh;
   showView("chat");
 }
 
@@ -343,16 +340,15 @@ async function registrarGasto() {
   btn.disabled = false;
 }
 
+// Notifica o Telegram via nossa função serverless (token secreto na Vercel).
+// Fire-and-forget: se a notificação falhar, o gasto já foi salvo — não trava nada.
 function dispararWebhook(g) {
-  const url = localStorage.getItem("of_webhook");
-  if (!url) return;
-  fetch(url, {
+  fetch("/api/notify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       membro: g.membro_nome, item: g.nome, categoria: g.categoria,
-      valor: g.estimado ? "estimado" : money(g.valor),
-      data: new Date().toLocaleString("pt-BR")
+      valor: temValor(g) ? (g.estimado ? "~" + money(g.valor) : money(g.valor)) : "sem preço"
     })
   }).catch(() => {});
 }
@@ -430,13 +426,29 @@ async function apagarGasto(id) {
 }
 
 // ---------- ADMIN ----------
-function salvarWebhook() {
-  const url = document.getElementById("webhookUrl").value.trim();
-  localStorage.setItem("of_webhook", url);
+async function testarNotificacao() {
   const m = document.getElementById("webhookMsg");
-  m.style.color = "#34d399";
-  m.textContent = url ? "Webhook salvo ✓" : "Webhook removido.";
-  setTimeout(() => { m.textContent = ""; }, 2500);
+  m.style.color = "#8b89ad";
+  m.textContent = "Enviando teste...";
+  try {
+    const r = await fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teste: true })
+    });
+    const data = await r.json();
+    if (r.ok) {
+      m.style.color = "#34d399";
+      m.textContent = "Enviado ✓ — confira o Telegram.";
+    } else {
+      m.style.color = "#f87171";
+      m.textContent = "⚠️ " + (data.error || "Falha no envio");
+    }
+  } catch {
+    m.style.color = "#f87171";
+    m.textContent = "⚠️ Falha ao contatar o servidor.";
+  }
+  setTimeout(() => { m.textContent = ""; }, 6000);
 }
 
 async function carregarMembros() {
