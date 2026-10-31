@@ -14,10 +14,11 @@ const SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["nome", "valor", "estimado", "categoria", "data_lembrete"],
+        required: ["nome", "valor", "parcelas", "estimado", "categoria", "data_lembrete"],
         properties: {
           nome: { type: "string" },
           valor: { anyOf: [{ type: "number" }, { type: "null" }] },
+          parcelas: { type: "integer" },
           estimado: { type: "boolean" },
           categoria: { type: "string", enum: CATEGORIAS },
           data_lembrete: { anyOf: [{ type: "string" }, { type: "null" }] }
@@ -54,6 +55,11 @@ export default async function handler(req, res) {
     "IMPORTANTE: se a pessoa disse um valor, MANTENHA esse valor mesmo que seja uma estimativa " +
     "(ex: 'mercado estimado 150' → valor=150, estimado=true). " +
     "Use valor=null APENAS quando nenhum valor foi informado (ex: 'comprei shampoo'). " +
+    // RF08: o app divide em parcelas; a IA só informa o TOTAL e quantas vezes.
+    "PARCELAS: parcelas = em quantas vezes a compra foi parcelada (1 quando for à vista ou não disser). " +
+    "valor é SEMPRE o valor TOTAL da compra: 'panela 500 em 5x' → valor=500, parcelas=5; " +
+    "'panela 5x de 100' → valor=500, parcelas=5. Não ponha o número da parcela no nome " +
+    "(ex: nome='Panelas', não 'Panelas parcela 1'). " +
     `Categorias possíveis: ${CATEGORIAS.join(", ")}. Use exatamente esses nomes. ` +
     "Casa=mercado/limpeza/luz/água; Beleza=shampoo/maquiagem/skincare; Saúde=remédio/médico/academia; " +
     "Alimentação=delivery/restaurante/lanche; Transporte=uber/ônibus/gasolina; Lazer=cinema/streaming/festa; " +

@@ -55,6 +55,23 @@ button.primary:disabled{opacity:.5}
 .member .n{font-size:14px;color:#e2e0f0}
 .badge{font-size:10px;background:#3730a3;color:#ddd6fe;padding:2px 6px;border-radius:6px;margin-left:6px}
 .spinner{text-align:center;color:#6b6a8a;font-size:12px;padding:10px}
+/* RF09 pago × pendente */
+.gasto .pg{background:none;border:2px solid #4a4870;color:transparent;width:26px;height:26px;border-radius:50%;font-size:14px;font-weight:800;cursor:pointer;flex-shrink:0;line-height:1}
+.gasto .pg.ok{background:#16a34a;border-color:#16a34a;color:#fff}
+.gasto.pago .nome{color:#8b89ad}
+.gasto .act.armado{color:#f87171;font-size:12px;font-weight:700}
+.gasto .escolha{display:flex;gap:4px}
+.gasto .escolha button{background:#3b1d2a;border:1px solid #7f1d1d;color:#fecaca;font-size:11px;border-radius:8px;padding:4px 6px;cursor:pointer}
+.tag{font-size:10px;background:#3a2a10;color:#f9a03f;padding:1px 6px;border-radius:6px;margin-left:4px}
+.mes-titulo{font-size:15px;font-weight:700;color:#f0eeff;margin-bottom:10px;text-align:center}
+.meu{font-size:12px;color:#8b89ad;text-align:center;margin:-8px 0 12px}
+/* RF11 meses anteriores */
+.mes-row{display:flex;align-items:center;gap:8px;background:#13111f;border:1px solid #2a2745;border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;width:100%;color:inherit;font:inherit;text-align:left}
+.mes-row .lab{width:70px;font-size:13px;font-weight:700;color:#e2e0f0}
+.mes-row .v{width:92px;text-align:right;font-size:13px;color:#a5f3b8;font-weight:700}
+.voltar{background:none;border:none;color:#a78bfa;font-size:13px;cursor:pointer;margin-bottom:10px;padding:0}
+.passou{font-size:12px;color:#f9a03f;background:#1f1708;border:1px solid #3a2a10;border-radius:10px;padding:8px 10px;margin:10px 0}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:400px;width:calc(100% - 32px);background:#3b1d2a;border:1px solid #7f1d1d;color:#fecaca;font-size:13px;border-radius:12px;padding:10px 12px;z-index:9}
 </style>
 </head>
 <body>
@@ -88,28 +105,40 @@ button.primary:disabled{opacity:.5}
 
   <div class="navtabs">
     <button class="navtab active" id="nav-chat" onclick="showView('chat')">💬 Chat</button>
-    <button class="navtab" id="nav-painel" onclick="showView('painel')">📊 Painel</button>
-    <button class="navtab hidden" id="nav-admin" onclick="showView('admin')">👑 Admin</button>
+    <button class="navtab" id="nav-painel" onclick="showView('painel')">📊 Mês</button>
+    <button class="navtab" id="nav-meses" onclick="showView('meses')">🗓️ Meses</button>
+    <button class="navtab hidden" id="nav-admin" onclick="showView('admin')">👑</button>
   </div>
 
   <!-- CHAT -->
   <div id="view-chat">
-    <p class="hint">Escreva o que gastou. Ex: "shampoo R$28 e mercado estimado 150". A IA categoriza e registra.</p>
+    <p class="hint">Escreva o que gastou. Ex: "shampoo R$28 e mercado estimado 150" ou "panela 500 em 5x". A IA categoriza e registra; parcelas vão uma pra cada mês.</p>
     <div id="chatLog"></div>
     <textarea id="chatInput" placeholder="O que você gastou?"></textarea>
     <button class="primary" id="chatBtn" onclick="registrarGasto()">Registrar →</button>
   </div>
 
   <!-- PAINEL -->
+  <!-- RF10: só o mês atual -->
   <div id="view-painel" class="hidden">
+    <div class="mes-titulo" id="painelMes"></div>
     <div class="stats">
-      <div class="stat"><div class="n" id="totalGrupo">R$ 0</div><div class="l">Total do grupo</div></div>
-      <div class="stat"><div class="n" id="totalMeu">R$ 0</div><div class="l">Meus gastos</div></div>
+      <div class="stat"><div class="n" id="totalMes">R$ 0</div><div class="l">Total do mês</div></div>
+      <div class="stat"><div class="n" id="totalPago">R$ 0</div><div class="l">Já pago</div></div>
+      <div class="stat"><div class="n" id="totalPendente">R$ 0</div><div class="l">Falta pagar</div></div>
     </div>
+    <div class="meu" id="totalMeu"></div>
     <div class="section-title">Por categoria</div>
     <div id="chart"></div>
-    <div class="section-title">Histórico</div>
+    <div class="section-title">Gastos do mês</div>
+    <p class="hint">Toque no ○ quando pagar. O que não for pago passa pro mês seguinte na virada.</p>
     <div id="historico"></div>
+  </div>
+
+  <!-- RF11: meses anteriores (só leitura) -->
+  <div id="view-meses" class="hidden">
+    <div id="mesesLista"></div>
+    <div id="mesDetalhe" class="hidden"></div>
   </div>
 
   <!-- ADMIN -->
@@ -119,6 +148,11 @@ button.primary:disabled{opacity:.5}
     <button class="primary" onclick="testarNotificacao()">Testar notificação 🧪</button>
     <div class="error" id="webhookMsg"></div>
 
+    <div class="section-title">Resumo do mês</div>
+    <p class="hint">Todo dia 1, de manhã, o grupo recebe o fechamento do mês que acabou. Toque abaixo pra mandar agora o do mês passado.</p>
+    <button class="primary" onclick="enviarResumo()">Enviar resumo do mês passado 🧪</button>
+    <div class="error" id="resumoMsg"></div>
+
     <div class="section-title">Membros</div>
     <div id="membrosList"></div>
     <input type="text" id="novoNome" placeholder="Nome do novo membro" autocomplete="off"/>
@@ -127,6 +161,7 @@ button.primary:disabled{opacity:.5}
     <div class="error" id="membroMsg"></div>
   </div>
 </div>
+<div id="toast" class="hidden"></div>
 
 <script>
 // ============================================================
@@ -201,7 +236,32 @@ const money = v => "R$ " + (Number(v) || 0).toFixed(2).replace(".", ",");
 // valor é null de verdade. O sufixo ~ sinaliza a estimativa junto da laranja.
 const temValor = g => g.valor !== null && g.valor !== undefined;
 const textoValor = g => !temValor(g) ? "sem preço" : (g.estimado ? "~" + money(g.valor) : money(g.valor));
-const mesAtual = () => new Date().toISOString().slice(0, 7);
+// Mês = calendário de Brasília (RF10). O toISOString() antigo usava UTC: depois
+// das 21h do último dia o app já achava que era o mês seguinte.
+const mesAtual = () => new Intl.DateTimeFormat("en-CA",
+  { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(new Date());
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const MESES_LONGOS = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const nomeMes = m => MESES[Number(m.slice(5, 7)) - 1];
+const nomeMesLongo = m => MESES_LONGOS[Number(m.slice(5, 7)) - 1] + "/" + m.slice(0, 4);
+// "2026-10" + 3 → "2027-01"
+function somaMes(m, k) {
+  const t = Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7)) - 1 + k;
+  return Math.floor(t / 12) + "-" + String(t % 12 + 1).padStart(2, "0");
+}
+// Data AAAA-MM-DD + k meses; dia 31 em mês curto vira o último dia do mês.
+function somaMesData(d, k) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "")) return null;
+  const m = somaMes(d.slice(0, 7), k);
+  const ultimo = new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).getUTCDate();
+  return m + "-" + String(Math.min(Number(d.slice(8, 10)), ultimo)).padStart(2, "0");
+}
+// RF08: divide em centavos; a sobra do arredondamento vai na última parcela.
+function divideParcelas(total, n) {
+  const cents = Math.round(total * 100), base = Math.floor(cents / n);
+  return Array.from({ length: n }, (_, i) => (i === n - 1 ? cents - base * (n - 1) : base) / 100);
+}
+const origemDe = g => g.mes_origem || g.mes;
 
 // ============================================================
 //  LOGIN
@@ -267,12 +327,13 @@ function abrirApp() {
 }
 
 function showView(v) {
-  ["chat", "painel", "admin"].forEach(x => {
+  ["chat", "painel", "meses", "admin"].forEach(x => {
     document.getElementById("view-" + x).classList.toggle("hidden", x !== v);
     document.getElementById("nav-" + x).classList.toggle("active", x === v);
   });
   if (painelTimer) { clearInterval(painelTimer); painelTimer = null; }
   if (v === "painel") { carregarPainel(); painelTimer = setInterval(carregarPainel, 10000); }
+  if (v === "meses") carregarMeses();
   if (v === "admin") carregarMembros();
 }
 
@@ -312,26 +373,50 @@ async function registrarGasto() {
 
     for (const it of data.itens) {
       const cat = CATS[it.categoria] ? it.categoria : "Outros";
-      const gasto = await sb("gastos", {
-        method: "POST",
-        body: JSON.stringify({
+      // Guardar o valor SEMPRE que a pessoa disse um — "estimado" fala da
+      // confiança no número, não da ausência dele (RF02). Só é null quando
+      // nenhum valor foi informado.
+      const valor = (typeof it.valor === "number" && isFinite(it.valor)) ? it.valor : null;
+      let n = Number.isInteger(it.parcelas) ? it.parcelas : 1;
+      if (n > 24) { addChat(`⚠️ ${it.nome}: mais de 24 parcelas — registrei à vista.`, false); n = 1; }
+      if (n < 1) n = 1;
+
+      // RF08: a parcela k cai no mês atual + (k−1); todas nascem pendentes (RF09).
+      const mes0 = mesAtual();
+      const grupo = n > 1 ? crypto.randomUUID() : null;
+      const valores = valor === null ? Array(n).fill(null) : (n > 1 ? divideParcelas(valor, n) : [valor]);
+      const linhas = valores.map((v, i) => {
+        const mes = somaMes(mes0, i);
+        return {
           membro_id: user.id,
           membro_nome: user.nome,
-          nome: it.nome,
-          // Guardar o valor SEMPRE que a pessoa disse um — "estimado" fala da
-          // confiança no número, não da ausência dele (RF02). Só é null quando
-          // nenhum valor foi informado.
-          valor: (typeof it.valor === "number" && isFinite(it.valor)) ? it.valor : null,
+          nome: n > 1 ? `${it.nome} (${i + 1}/${n})` : it.nome,
+          valor: v,
           estimado: !!it.estimado,
           categoria: cat,
-          mes: mesAtual(),
-          data_lembrete: it.data_lembrete || null,
+          mes,
+          mes_origem: mes,
+          data_lembrete: it.data_lembrete ? somaMesData(it.data_lembrete, i) : null,
+          pago: false,
+          parcela_grupo: grupo,
+          parcela_num: n > 1 ? i + 1 : null,
+          parcela_total: n > 1 ? n : null,
           apagado: false
-        })
+        };
       });
-      const g = gasto[0];
-      addChat(`${CATS[cat].emoji} ${g.nome} → ${textoValor(g)}`, false);
-      dispararWebhook(g);
+      const salvos = await sb("gastos", { method: "POST", body: JSON.stringify(linhas) });
+      const g = salvos[0];
+      if (n === 1) {
+        addChat(`${CATS[cat].emoji} ${g.nome} → ${textoValor(g)}`, false);
+        dispararWebhook(g);
+      } else {
+        const til = it.estimado ? "~" : "";
+        const resumo = valor === null ? `${n}x, sem preço`
+          : `${til}${money(valor)} em ${n}x de ${til}${money(valores[0])}`;
+        addChat(`${CATS[cat].emoji} ${it.nome} → ${resumo} (${nomeMes(mes0)} a ${nomeMes(somaMes(mes0, n - 1))})`, false);
+        // Uma notificação por compra, não por parcela (RF08).
+        dispararWebhook({ membro_nome: user.nome, nome: it.nome, categoria: cat }, resumo);
+      }
     }
   } catch (e) {
     loading.remove();
@@ -342,22 +427,41 @@ async function registrarGasto() {
 
 // Notifica o Telegram via nossa função serverless (token secreto na Vercel).
 // Fire-and-forget: se a notificação falhar, o gasto já foi salvo — não trava nada.
-function dispararWebhook(g) {
+function dispararWebhook(g, valorTxt) {
   fetch("/api/notify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       membro: g.membro_nome, item: g.nome, categoria: g.categoria,
-      valor: temValor(g) ? (g.estimado ? "~" + money(g.valor) : money(g.valor)) : "sem preço"
+      valor: valorTxt || textoValor(g)
     })
   }).catch(() => {});
 }
 
 // ---------- PAINEL ----------
+// Gastos que estão na tela, por id — o ✓ e o 🗑️ consultam daqui.
+const gastosNaTela = {};
+let viradaFeita = null;
+
+// RF10: todo gasto PENDENTE de mês que já passou muda pro mês atual.
+// Idempotente (rodar 2× dá no mesmo); a rotina do dia 1 faz a mesma coisa.
+async function virarMes() {
+  const atual = mesAtual();
+  if (viradaFeita === atual) return;
+  await sb(`gastos?apagado=eq.false&pago=eq.false&mes=lt.${atual}`,
+    { method: "PATCH", body: JSON.stringify({ mes: atual }) });
+  viradaFeita = atual;
+}
+
 async function carregarPainel() {
+  // Com um 🗑️ armado na tela, não redesenha (senão o 2º toque some).
+  if (document.querySelector('#historico [data-armado="1"]')) return;
+  const atual = mesAtual();
   let dados;
-  try { dados = await sb("gastos?apagado=eq.false&order=criado_em.desc"); }
-  catch (e) {
+  try {
+    await virarMes();
+    dados = await sb(`gastos?apagado=eq.false&mes=eq.${atual}&order=criado_em.desc`);
+  } catch (e) {
     // Antes isso dava `return` mudo: o painel ficava com cara de "nenhum gasto"
     // quando na verdade estava quebrado. Falha silenciosa mente para o usuário.
     document.getElementById("historico").innerHTML =
@@ -365,19 +469,32 @@ async function carregarPainel() {
     return;
   }
 
-  let totalGrupo = 0, totalMeu = 0;
+  let total = 0, pago = 0, meu = 0;
   const porCat = {};
   for (const g of dados) {
     const v = Number(g.valor) || 0;
-    totalGrupo += v;
-    if (g.membro_id === user.id) totalMeu += v;
+    total += v;
+    if (g.pago) pago += v;
+    if (g.membro_id === user.id) meu += v;
     porCat[g.categoria] = (porCat[g.categoria] || 0) + v;
   }
-  document.getElementById("totalGrupo").textContent = money(totalGrupo);
-  document.getElementById("totalMeu").textContent = money(totalMeu);
+  document.getElementById("painelMes").textContent = nomeMesLongo(atual);
+  document.getElementById("totalMes").textContent = money(total);
+  document.getElementById("totalPago").textContent = money(pago);
+  document.getElementById("totalPendente").textContent = money(total - pago);
+  document.getElementById("totalMeu").textContent = "Meus gastos no mês: " + money(meu);
+  document.getElementById("chart").innerHTML = barrasCategoria(porCat);
 
+  // Pendentes primeiro, depois pagos (cada grupo do mais novo pro mais antigo).
+  const lista = [...dados.filter(g => !g.pago), ...dados.filter(g => g.pago)];
+  document.getElementById("historico").innerHTML = lista.length
+    ? lista.map(g => renderGasto(g, false)).join("")
+    : '<div class="spinner">Nenhum gasto neste mês ainda.</div>';
+}
+
+function barrasCategoria(porCat) {
   const maxCat = Math.max(1, ...Object.values(porCat));
-  document.getElementById("chart").innerHTML = Object.keys(CATS).map(cat => {
+  return Object.keys(CATS).map(cat => {
     const v = porCat[cat] || 0;
     const pct = Math.round((v / maxCat) * 100);
     return `<div class="bar-row">
@@ -385,24 +502,28 @@ async function carregarPainel() {
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${CATS[cat].cor}"></div></div>
       <div class="v">${money(v)}</div></div>`;
   }).join("");
-
-  document.getElementById("historico").innerHTML = dados.length
-    ? dados.map(renderGasto).join("")
-    : '<div class="spinner">Nenhum gasto ainda.</div>';
 }
 
-function renderGasto(g) {
+// fechado = mês que já passou (RF11): só leitura, exceto o admin apagar de vez.
+function renderGasto(g, fechado) {
+  gastosNaTela[g.id] = g;
   const cat = CATS[g.categoria] || CATS["Outros"];
   const valClass = g.estimado ? "val est" : "val";
   const valTxt = textoValor(g);
-  const podeApagar = user.is_admin || g.membro_id === user.id;
-  const calBtn = g.data_lembrete ? calendarLink(g) : "";
-  const delBtn = podeApagar ? `<button class="act" onclick="apagarGasto('${g.id}')" title="apagar">🗑️</button>` : "";
-  return `<div class="gasto">
+  const dono = user.is_admin || g.membro_id === user.id;
+  const podeApagar = fechado ? user.is_admin : dono;
+  const calBtn = g.data_lembrete && !fechado ? calendarLink(g) : "";
+  const pgBtn = fechado ? "" : (dono
+    ? `<button class="pg${g.pago ? " ok" : ""}" onclick="alternarPago('${g.id}')" title="${g.pago ? "pago — tocar desfaz" : "marcar como pago"}">✓</button>`
+    : `<span class="pg${g.pago ? " ok" : ""}" title="${g.pago ? "pago" : "pendente"}">✓</span>`);
+  const delBtn = podeApagar ? `<button class="act" onclick="pedirApagar(this,'${g.id}')" title="apagar">🗑️</button>` : "";
+  const veio = origemDe(g) !== g.mes ? `<span class="tag">↪ veio de ${nomeMes(origemDe(g))}</span>` : "";
+  return `<div class="gasto${g.pago ? " pago" : ""}">
+    ${pgBtn}
     <div class="emoji">${cat.emoji}</div>
     <div class="info">
-      <div class="nome">${escapeHtml(g.nome)}</div>
-      <div class="meta">${escapeHtml(g.membro_nome)} · ${g.categoria}</div>
+      <div class="nome">${escapeHtml(g.nome)}${veio}</div>
+      <div class="meta">${escapeHtml(g.membro_nome)} · ${g.categoria}${g.pago ? " · pago" : ""}</div>
     </div>
     <div class="${valClass}">${valTxt}</div>
     ${calBtn}${delBtn}
@@ -417,12 +538,167 @@ function calendarLink(g) {
   return `<a class="cal" href="${url}" target="_blank" rel="noopener" title="Google Agenda">📅</a>`;
 }
 
-async function apagarGasto(id) {
-  if (!confirm("Apagar este gasto?")) return;
+// RF09: ✓ marca pago (com a data); tocar de novo volta a pendente. Não muda o mês.
+async function alternarPago(id) {
+  const g = gastosNaTela[id];
+  if (!g) return;
+  const pago = !g.pago;
   try {
-    await sb(`gastos?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ apagado: true }) });
+    const r = await sb(`gastos?id=eq.${id}`, { method: "PATCH",
+      body: JSON.stringify({ pago, pago_em: pago ? new Date().toISOString() : null }) });
+    if (!r || !r.length) throw Object.assign(new Error("o banco não alterou nenhuma linha"), { kind: "outro" });
     carregarPainel();
-  } catch (e) { alert("Não deu pra apagar.\n\n" + msgErro(e)); }
+  } catch (e) { aviso("Não deu pra marcar.\n" + msgErro(e)); }
+}
+
+// Apagar em dois toques (confirm() não é confiável em todo navegador).
+// 1º toque arma por 3 s; compra parcelada mostra "só esta" / "todas".
+function pedirApagar(btn, id) {
+  const g = gastosNaTela[id];
+  if (!g) return;
+  const deVez = user.is_admin;    // RF13: admin apaga de vez
+  if (btn.dataset.armado === "1") { apagarGasto(id, false); return; }
+  if (g.parcela_grupo) {
+    const box = document.createElement("span");
+    box.className = "escolha";
+    box.dataset.armado = "1";
+    const todas = deVez ? "todas" : "todas não pagas";
+    box.innerHTML = `<button onclick="apagarGasto('${id}',false)">só esta</button><button onclick="apagarGasto('${id}',true)">${todas}</button>`;
+    btn.replaceWith(box);
+    setTimeout(() => { if (box.isConnected) box.replaceWith(btn); }, 4000);
+    return;
+  }
+  btn.dataset.armado = "1";
+  btn.classList.add("armado");
+  btn.textContent = deVez ? "apagar de vez?" : "apagar?";
+  setTimeout(() => {
+    btn.dataset.armado = "";
+    btn.classList.remove("armado");
+    btn.textContent = "🗑️";
+  }, 3000);
+}
+
+async function apagarGasto(id, todas) {
+  const g = gastosNaTela[id];
+  if (!g) return;
+  const deVez = user.is_admin;
+  let filtro = `id=eq.${id}`;
+  if (todas && g.parcela_grupo) {
+    filtro = `parcela_grupo=eq.${g.parcela_grupo}`;
+    if (!deVez) filtro += "&pago=eq.false";   // membro comum: só as que faltam pagar
+  }
+  try {
+    // RF13: admin → DELETE (some do banco). Membro → como sempre, marca apagado.
+    const r = deVez
+      ? await sb(`gastos?${filtro}`, { method: "DELETE" })
+      : await sb(`gastos?${filtro}`, { method: "PATCH", body: JSON.stringify({ apagado: true }) });
+    // Com RLS barrando, o PostgREST responde 200 [] — não é sucesso, é "nada apagado".
+    if (!r || !r.length) throw Object.assign(new Error("o banco não apagou nenhuma linha (política de DELETE?)"), { kind: "outro" });
+  } catch (e) { aviso("Não deu pra apagar.\n" + msgErro(e)); }
+  const box = document.querySelector('[data-armado="1"]');
+  if (box) box.dataset.armado = "";
+  if (!document.getElementById("view-painel").classList.contains("hidden")) carregarPainel();
+  if (!document.getElementById("mesDetalhe").classList.contains("hidden")) abrirMes(mesAberto);
+}
+
+function aviso(texto) {
+  const t = document.getElementById("toast");
+  t.textContent = texto;
+  t.style.whiteSpace = "pre-line";
+  t.classList.remove("hidden");
+  clearTimeout(aviso.timer);
+  aviso.timer = setTimeout(() => t.classList.add("hidden"), 6000);
+}
+
+// ---------- MESES ANTERIORES (RF11) ----------
+let mesAberto = null;
+
+// Todo gasto de mês anterior já está pago: os pendentes mudaram de mês na virada.
+async function gastosAnteriores() {
+  await virarMes();
+  return sb(`gastos?apagado=eq.false&or=(mes.lt.${mesAtual()},mes_origem.lt.${mesAtual()})&order=criado_em.desc`);
+}
+
+async function carregarMeses() {
+  mesAberto = null;
+  document.getElementById("mesDetalhe").classList.add("hidden");
+  const lista = document.getElementById("mesesLista");
+  lista.classList.remove("hidden");
+  lista.innerHTML = '<div class="spinner">Carregando...</div>';
+  let dados;
+  try { dados = await gastosAnteriores(); }
+  catch (e) { lista.innerHTML = `<div class="spinner" style="color:#f87171">⚠️ ${escapeHtml(msgErro(e))}</div>`; return; }
+
+  const atual = mesAtual();
+  const totais = {};
+  for (const g of dados) {
+    if (g.mes >= atual) continue;
+    totais[g.mes] = (totais[g.mes] || 0) + (Number(g.valor) || 0);
+  }
+  const meses = Object.keys(totais).sort().reverse();
+  if (!meses.length) { lista.innerHTML = '<div class="spinner">Nenhum mês fechado ainda.</div>'; return; }
+  const max = Math.max(1, ...Object.values(totais));
+  lista.innerHTML = '<p class="hint">Meses que já fecharam. Toque num mês pra ver o detalhe.</p>' +
+    meses.map(m => `<button class="mes-row" onclick="abrirMes('${m}')">
+      <div class="lab">${nomeMes(m)}/${m.slice(2, 4)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(totais[m] / max * 100)}%;background:#7c3aed"></div></div>
+      <div class="v">${money(totais[m])}</div></button>`).join("");
+}
+
+async function abrirMes(m) {
+  mesAberto = m;
+  const det = document.getElementById("mesDetalhe");
+  document.getElementById("mesesLista").classList.add("hidden");
+  det.classList.remove("hidden");
+  det.innerHTML = '<div class="spinner">Carregando...</div>';
+  let dados;
+  try { dados = await gastosAnteriores(); }
+  catch (e) { det.innerHTML = `<div class="spinner" style="color:#f87171">⚠️ ${escapeHtml(msgErro(e))}</div>`; return; }
+
+  const doMes = dados.filter(g => g.mes === m);
+  // Passou pro mês seguinte = existia até o fim de m e ainda estava pendente.
+  const passou = dados.filter(g => origemDe(g) <= m && g.mes > m);
+  let total = 0;
+  const porCat = {}, porPessoa = {};
+  for (const g of doMes) {
+    const v = Number(g.valor) || 0;
+    total += v;
+    porCat[g.categoria] = (porCat[g.categoria] || 0) + v;
+    porPessoa[g.membro_nome] = (porPessoa[g.membro_nome] || 0) + v;
+  }
+  const valPassou = passou.reduce((s, g) => s + (Number(g.valor) || 0), 0);
+  const pessoas = Object.entries(porPessoa).sort((a, b) => b[1] - a[1])
+    .map(([p, v]) => `${escapeHtml(p)} ${money(v)}`).join(" · ");
+  det.innerHTML = `<button class="voltar" onclick="carregarMeses()">← todos os meses</button>
+    <div class="mes-titulo">${nomeMesLongo(m)}</div>
+    <div class="stats"><div class="stat"><div class="n">${money(total)}</div><div class="l">Total pago no mês</div></div></div>
+    <div class="meu">${pessoas || "ninguém lançou"}</div>
+    ${passou.length ? `<div class="passou">↪ Passou pro mês seguinte: ${passou.length} ${passou.length === 1 ? "item" : "itens"}, ${money(valPassou)}</div>` : ""}
+    <div class="section-title">Por categoria</div>
+    ${barrasCategoria(porCat)}
+    <div class="section-title">Gastos</div>
+    ${doMes.length ? doMes.map(g => renderGasto(g, true)).join("") : '<div class="spinner">Nenhum gasto pago neste mês.</div>'}`;
+}
+
+// ---------- RESUMO (RF12) ----------
+async function enviarResumo() {
+  const m = document.getElementById("resumoMsg");
+  m.style.color = "#8b89ad";
+  m.textContent = "Enviando resumo...";
+  try {
+    const r = await fetch("/api/resumo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mes: somaMes(mesAtual(), -1) })
+    });
+    const data = await r.json();
+    m.style.color = r.ok ? "#34d399" : "#f87171";
+    m.textContent = r.ok ? "Enviado ✓ — confira o Telegram." : "⚠️ " + (data.error || "Falha no envio");
+  } catch {
+    m.style.color = "#f87171";
+    m.textContent = "⚠️ Falha ao contatar o servidor.";
+  }
+  setTimeout(() => { m.textContent = ""; }, 6000);
 }
 
 // ---------- ADMIN ----------
