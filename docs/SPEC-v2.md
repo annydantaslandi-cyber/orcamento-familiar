@@ -97,4 +97,4 @@ Colunas novas em `gastos`: `pago` (boolean, padrão falso), `pago_em` (data/hora
 Metas por categoria · renda/entradas e saldo · editar gasto depois de lançado · parcial semanal no Telegram · comparação de meses dentro do painel do mês atual.
 
 ## Restrições que continuam
-`index.html` único (a Anny edita pelo celular) + funções em `api/`. A rotina do dia 1 é um **Vercel Cron** (`vercel.json` na raiz, permitido no plano grátis: 1×/dia) chamando `api/resumo.js`, protegido por uma variável `CRON_SECRET` que precisa ser criada na Vercel **da Anny** (ela ou o Alecs pelo login dela).
+`index.html` único (a Anny edita pelo celular) + funções em `api/`. A rotina do dia 1 é um **Vercel Cron** (`vercel.json` na raiz, permitido no plano grátis: 1×/dia) chamando `api/resumo.js`, protegido por uma variável `CRON_SECRET` que precisa ser criada na Vercel **da Anny** (ela ou o Alecs pelo login dela). **Criada em 31/10/2026** (Production, tipo Secret; o valor ninguém precisa guardar — só a Vercel usa).
